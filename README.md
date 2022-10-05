@@ -17,3 +17,14 @@
 
 ### Task
 **Given a Pulsar Star’s information, build a machine learning model that can classify the Star.**
+
+### contant
+* [Importing the libraries](#importing-the-libraries)
+* [Reading the data](#Reading-the-data)
+* [Exploring the data](#Exploring-the-data)
+* [Figure out Data](#Figure-out-Data)
+* [Detect Outliers for Every columns](#Detect-Outliers-for-Every-columns)
+* [Scaling and Split the data](#Scaling-and-Split-the-data)
+* [balance the data](#balance-the-data)
+* [Modeling](#Modeling)
+* [compersion between models](#compersion-between-models)
