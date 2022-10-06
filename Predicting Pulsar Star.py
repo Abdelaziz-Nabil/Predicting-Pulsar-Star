@@ -4,7 +4,7 @@
 # ## About Dataset 
 # #### [Problem Statement:](https://www.kaggle.com/datasets/colearninglounge/predicting-pulsar-starintermediate)
 # > **Pulsars are a rare type of Neutron star that produce radio emission detectable here on Earth. They are of considerable scientific interest as probes of space-time, the inter-stellar medium, and states of matter. Machine learning tools are now being used to automatically label pulsar candidates to facilitate rapid analysis. Classification systems in particular are being widely adopted,which treat the candidate data sets as binary classification problems.**
-# 
+# ![WhatsApp%20Image%202022-10-06%20at%2012.58.22%20AM.jpeg](attachment:WhatsApp%20Image%202022-10-06%20at%2012.58.22%20AM.jpeg)
 # #### Attribute Information:
 # > Each candidate is described by 8 continuous variables, and a single class variable. The first four are simple statistics obtained from the integrated pulse profile (folded profile). This is an array of continuous variables that describe a longitude-resolved version of the signal that has been averaged in both time and frequency . The remaining four variables are similarly obtained from the DM-SNR curve . These are summarised below:
 # 
@@ -33,7 +33,7 @@
 
 # ## Importing the libraries
 
-# In[321]:
+# In[330]:
 
 
 import pandas as pd
@@ -52,7 +52,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import OrdinalEncoder, MinMaxScaler
 from sklearn.decomposition import PCA
 from sklearn import metrics
-from sklearn .metrics import accuracy_score
+from sklearn .metrics import accuracy_score , recall_score , precision_score,f1_score
+
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold
@@ -60,20 +61,20 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from imblearn.under_sampling import RandomUnderSampler
-from sklearn.metrics import  mean_squared_error
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, cross_val_predict
 from sklearn.metrics import roc_curve, roc_auc_score
 from imblearn.over_sampling import SMOTE
-from sklearn.metrics import r2_score
 from random import shuffle
+from sklearn.ensemble import  AdaBoostClassifier, VotingClassifier
+from xgboost import XGBClassifier
 import warnings
 warnings.filterwarnings('ignore')
 
 
 # ## Reading the data
 
-# In[239]:
+# In[331]:
 
 
 column=['Mean_integrated_profile',
@@ -85,14 +86,14 @@ column=['Mean_integrated_profile',
        'target_class']
 
 
-# In[240]:
+# In[332]:
 
 
 path='D:\Samsung Innovation Campus\Data\pulsar data\HTRU_2.csv'
 df=pd.read_csv(path,sep = "," , encoding = "utf-8")
 
 
-# In[241]:
+# In[333]:
 
 
 df.columns=column
@@ -100,13 +101,13 @@ df.columns=column
 
 # ## Exploring the data
 
-# In[242]:
+# In[334]:
 
 
 df.head()
 
 
-# In[243]:
+# In[335]:
 
 
 df.describe()
@@ -136,19 +137,19 @@ df.describe()
 # 
 # 4. **Skewness** : Very high values, and high standard deviation. Hence the DM-SNR curve is very skewed (expected)
 
-# In[244]:
+# In[336]:
 
 
 df.median(axis = 0)
 
 
-# In[245]:
+# In[337]:
 
 
 df.info()
 
 
-# In[246]:
+# In[338]:
 
 
 missing_values_df=df.isna().sum()
@@ -157,7 +158,7 @@ missing_values_df
 
 # ### Check if our data is balanced, why not?
 
-# In[247]:
+# In[339]:
 
 
 data=df['target_class'].value_counts()
@@ -166,7 +167,7 @@ data=data.to_frame()
 data
 
 
-# In[248]:
+# In[340]:
 
 
 fig, axs = plt.subplots(figsize=(9, 6))
@@ -182,7 +183,7 @@ plt.show()
 # * No. of instances pulsar stars are detected in dataset is 1639
 # * No. of instances pulsar stars are not detected in dataset is 16258
 
-# In[249]:
+# In[341]:
 
 
 # colors palettes
@@ -193,7 +194,7 @@ palett=['Accent','Blues','BrBG','BuGn','BuPu','Dark2','GnBu','Greens','Greys','O
 
 # ## Figure out Data
 
-# In[250]:
+# In[342]:
 
 
 def create_plot(columne,data,i):
@@ -215,7 +216,7 @@ def create_plot(columne,data,i):
     plt.tight_layout()
 
 
-# In[251]:
+# In[343]:
 
 
 def create_plot(columne,data,i,xlabel):
@@ -241,13 +242,14 @@ def create_plot(columne,data,i,xlabel):
     plt.tight_layout()
 
 
-# In[252]:
+# In[344]:
 
 
 def create_scatter_plo(x,y,i,a,b):
     pal=['cubehelix_r','magma']
     data=df[(df[x].notnull()) & (df[y].notnull())]
-    data['target_class'] = data.target_class.astype(object)
+    data['target_class'] = data['target_class'].apply(lambda x: 'Non Pulsar'  if x==0 else 'Pulsar')
+    #data['target_class'] = data.target_class.astype(object)
     color_discrete=["red","green","blue", "goldenrod","magenta"]
     shuffle(color_discrete)
     fig = px.scatter(data, x=x, y =y,color="target_class",symbol="target_class",
@@ -260,7 +262,7 @@ def create_scatter_plo(x,y,i,a,b):
 
 # ### Mean of the integrated profile & Mean of the DM-SNR curve
 
-# In[253]:
+# In[345]:
 
 
 create_plot(columne='Mean_integrated_profile',data=df,i=0,xlabel='Mean of the integrated profile')
@@ -270,7 +272,7 @@ create_plot(columne='Mean_integrated_profile',data=df,i=0,xlabel='Mean of the in
 # - target 0 has some outliers
 # - target 1 Almost no outliers
 
-# In[254]:
+# In[346]:
 
 
 create_plot(columne='Mean_DM_SNR',data=df,i=0,xlabel='Mean of the DM-SNR curve')
@@ -280,7 +282,7 @@ create_plot(columne='Mean_DM_SNR',data=df,i=0,xlabel='Mean of the DM-SNR curve')
 # - target 0 has outliers
 # - target 1 has some outliers
 
-# In[255]:
+# In[347]:
 
 
 create_scatter_plo(x='Mean_integrated_profile', y = 'Mean_DM_SNR',i=0,a='Mean of the integrated profile',b='Mean of the DM-SNR curve')
@@ -291,7 +293,7 @@ create_scatter_plo(x='Mean_integrated_profile', y = 'Mean_DM_SNR',i=0,a='Mean of
 
 # ### Standard deviation of the integrated profile & Standard deviation of the DM-SNR curve
 
-# In[256]:
+# In[348]:
 
 
 create_plot(columne='std_integrated_profile',data=df,i=1,xlabel='Standard deviation of the integrated profile')
@@ -300,7 +302,7 @@ create_plot(columne='std_integrated_profile',data=df,i=1,xlabel='Standard deviat
 # - Std. Dev Almost a **normal** distribution with a tail to right of mean
 # - Std. Dev has some outliers
 
-# In[257]:
+# In[349]:
 
 
 create_plot(columne='std_DM_SNR',data=df,i=1,xlabel='Standard deviation of the DM-SNR curve')
@@ -310,7 +312,7 @@ create_plot(columne='std_DM_SNR',data=df,i=1,xlabel='Standard deviation of the D
 # - target 0 has some outliers
 # - target 1 Almost no outliers
 
-# In[258]:
+# In[350]:
 
 
 create_scatter_plo(x='std_integrated_profile', y = 'std_DM_SNR',i=1,a='Standard deviation of the integrated profile',b='Standard deviation of the DM-SNR curve')
@@ -320,7 +322,7 @@ create_scatter_plo(x='std_integrated_profile', y = 'std_DM_SNR',i=1,a='Standard 
 
 # ### Excess kurtosis of the integrated profile & Excess kurtosis of the DM-SNR curve
 
-# In[259]:
+# In[351]:
 
 
 create_plot(columne='Excess_kurtosis_integrated_profile',data=df,i=0,xlabel='Excess kurtosis of the integrated profile')
@@ -330,7 +332,7 @@ create_plot(columne='Excess_kurtosis_integrated_profile',data=df,i=0,xlabel='Exc
 # - **Highly crowded**
 # - target **1** Almost **no** outliers
 
-# In[260]:
+# In[352]:
 
 
 create_plot(columne='Excess_kurtosis_DM_SNR',data=df,i=0,xlabel='Excess kurtosis of the DM-SNR curve')
@@ -339,7 +341,7 @@ create_plot(columne='Excess_kurtosis_DM_SNR',data=df,i=0,xlabel='Excess kurtosis
 #  - Left skewed  Almost **normal** distribution. Minimal tails.
 #  - It has some **outliers**
 
-# In[261]:
+# In[353]:
 
 
 create_scatter_plo(x='Excess_kurtosis_integrated_profile', y = 'Excess_kurtosis_DM_SNR',i=0,a='Excess kurtosis of the integrated profile',b='Excess kurtosis of the DM-SNR curve')
@@ -350,7 +352,7 @@ create_scatter_plo(x='Excess_kurtosis_integrated_profile', y = 'Excess_kurtosis_
 
 # ### Skewness of the integrated profile & Skewness of the DM-SNR curve
 
-# In[262]:
+# In[354]:
 
 
 create_plot(columne='Skewness_integrated_profile',data=df,i=1,xlabel='Skewness of the integrated profile')
@@ -359,7 +361,7 @@ create_plot(columne='Skewness_integrated_profile',data=df,i=1,xlabel='Skewness o
 # - Highly crowded, few outliers in the form of a long tail to the right
 # - It has some outliers, **right skewed**
 
-# In[263]:
+# In[355]:
 
 
 create_plot(columne='Skewness_DM_SNR',data=df,i=1,xlabel='Skewness of the DM-SNR curve')
@@ -368,7 +370,7 @@ create_plot(columne='Skewness_DM_SNR',data=df,i=1,xlabel='Skewness of the DM-SNR
 # - Highly right skewed with a long right tail
 # - It has some outliers, right skewed 
 
-# In[264]:
+# In[356]:
 
 
 create_scatter_plo(x='Skewness_integrated_profile', y = 'Skewness_DM_SNR',i=1,a='Skewness of the integrated profile',b='Skewness of the DM-SNR curve')
@@ -379,7 +381,7 @@ create_scatter_plo(x='Skewness_integrated_profile', y = 'Skewness_DM_SNR',i=1,a=
 
 # ----
 
-# In[265]:
+# In[357]:
 
 
 g = sns.pairplot(df,hue='target_class',corner=True)
@@ -387,12 +389,13 @@ g = sns.pairplot(df,hue='target_class',corner=True)
 
 # ### Correlation Heatmap
 
-# In[266]:
+# In[358]:
 
 
-plt.figure(figsize = (14, 10))
+fig=plt.figure(figsize = (14, 10))
 corr_mat = df.corr()
 sns.heatmap(corr_mat, xticklabels = corr_mat.columns,cmap='viridis', yticklabels = corr_mat.columns, annot=True)
+fig.savefig('D:\\Samsung Innovation Campus\\Data\\pulsar data\\Heatmap.png', bbox_inches='tight', dpi=100)
 plt.show()
 
 
@@ -422,7 +425,7 @@ plt.show()
 
 # ## Detect Outliers for Every columns
 
-# In[267]:
+# In[359]:
 
 
 def remove_outlier(col):
@@ -436,7 +439,7 @@ def remove_outlier(col):
 
 # > **Since there are not many outliers we can either remove them or cap them. However, removing them is not advised, so we will cap them using IQR**
 
-# In[268]:
+# In[360]:
 
 
 data_df=df.copy()
@@ -444,49 +447,97 @@ data0=df[df['target_class']==0.0]
 data1=df[df['target_class']==1.0]
 
 
-# In[269]:
+# In[361]:
 
 
+dec={"Colume":[],"outliers":[],"u_range":[] , 'l_range':[] ,"upper":[] , 'lower':[] ,
+     "Nu_range":[] , 'Nl_range':[] ,"N_upper":[] , 'N_lower':[] 
+    }
 for column in df.iloc[:,:-1].columns:
     lr,ur=remove_outlier(data0[column])
     u_data=(data_df[(data_df['target_class']==0)&(data_df[column] > ur)])[column]
     l_data=(data_df[(data_df['target_class']==0)&(data_df[column] < lr)])[column]
+    dec['Colume'].append(column + " 0")
+    dec['outliers'].append(len(u_data)+len(l_data))
+    dec['upper'].append(len(u_data))
+    dec['lower'].append(len(l_data))
+    dec['u_range'].append(ur)
+    dec['l_range'].append(lr)
+    
     if not u_data.empty:
         u_data=sorted(u_data)
         index=int(round(len(u_data)*0.7,0))
         ur=u_data[index]
+        dec['N_upper'].append(len(u_data[index:]))
+    else:
+        dec['N_upper'].append(len(u_data))
+        
     if not l_data.empty:
         l_data=sorted(l_data)
         index=int(round(len(l_data)*0.3,0))
         lr=l_data[index]
+        dec['N_lower'].append(len(l_data[:index]))
+    else:
+        dec['N_lower'].append(len(l_data))
+        
     index=(data_df[(data_df['target_class']==0)&((data_df[column] < lr)|(data_df[column] > ur))]).index
     index=index.to_list()
+    
+    dec['Nu_range'].append(ur)
+    dec['Nl_range'].append(lr)
+    
     data_df.drop(index,inplace=True)
     
     lr,ur=remove_outlier(data1[column])
     u_data=(data_df[(data_df['target_class']==1)&(data_df[column] > ur)])[column]
     l_data=(data_df[(data_df['target_class']==1)&(data_df[column] < lr)])[column]
+    dec['Colume'].append(column + " 1")
+    dec['outliers'].append(len(u_data)+len(l_data))
+    dec['upper'].append(len(u_data))
+    dec['lower'].append(len(l_data))
+    dec['u_range'].append(ur)
+    dec['l_range'].append(lr)
+    
     if not u_data.empty:
         u_data=sorted(u_data)
         index=int(round(len(u_data)*0.7,0))
         ur=u_data[index]
+        dec['N_upper'].append(len(u_data[index:]))
+    else:
+        dec['N_upper'].append(len(u_data))
+        
     if not l_data.empty:
         l_data=sorted(l_data)
         index=int(round(len(l_data)*0.3,0))
         lr=l_data[index]
+        dec['N_lower'].append(len(l_data[:index]))
+    else:
+        dec['N_lower'].append(len(l_data))
+        
+        
     index=(data_df[(data_df['target_class']==1)&((data_df[column] < lr)|(data_df[column] > ur))]).index
     index=index.to_list()
+    
+    dec['Nu_range'].append(ur)
+    dec['Nl_range'].append(lr)
+    
     data_df.drop(index,inplace=True)
     
 
 
-# In[270]:
+# In[362]:
+
+
+pd.DataFrame(dec).sort_values(['N_upper','N_lower'],ascending=False)
+
+
+# In[363]:
 
 
 data_df.shape
 
 
-# In[271]:
+# In[364]:
 
 
 df.shape
@@ -494,7 +545,7 @@ df.shape
 
 # ### Figure out outlier Before remove them and  After
 
-# In[272]:
+# In[365]:
 
 
 def box_plot(column,xlabel):
@@ -527,49 +578,49 @@ def box_plot(column,xlabel):
     plt.tight_layout()
 
 
-# In[273]:
+# In[366]:
 
 
 box_plot('Mean_integrated_profile',xlabel='Mean of the integrated profile')
 
 
-# In[274]:
+# In[367]:
 
 
 box_plot('std_integrated_profile',xlabel='Standard deviation of the integrated profile')
 
 
-# In[275]:
+# In[368]:
 
 
 box_plot('Excess_kurtosis_integrated_profile',xlabel='Excess kurtosis of the integrated profile')
 
 
-# In[276]:
+# In[369]:
 
 
 box_plot('Skewness_integrated_profile',xlabel='Skewness of the integrated profile')
 
 
-# In[277]:
+# In[370]:
 
 
 box_plot('Mean_DM_SNR',xlabel='Mean of the DM-SNR curve')
 
 
-# In[278]:
+# In[371]:
 
 
 box_plot('std_DM_SNR',xlabel='Standard deviation of the DM-SNR curve')
 
 
-# In[279]:
+# In[372]:
 
 
 box_plot('Excess_kurtosis_DM_SNR',xlabel='Excess kurtosis of the DM-SNR curve')
 
 
-# In[280]:
+# In[373]:
 
 
 box_plot('Skewness_DM_SNR',xlabel='Skewness of the DM-SNR curve')
@@ -579,11 +630,22 @@ box_plot('Skewness_DM_SNR',xlabel='Skewness of the DM-SNR curve')
 
 # ### Split
 
-# In[281]:
+# In[374]:
 
 
-x = data_df.drop('target_class',axis=1)
-y = data_df['target_class'].values
+df1=data_df[data_df['target_class']==0].sample(frac = 0.35,random_state=1234)
+df2=data_df[data_df['target_class']==1]
+combined = pd.concat([df1, df2])
+combined=combined.sample(frac = 1,random_state=4321)
+combined.reset_index(drop=True,inplace=True)
+combined
+
+
+# In[375]:
+
+
+x = combined.drop('target_class',axis=1)
+y = combined['target_class'].values
 
 
 # ### Scaling
@@ -593,7 +655,7 @@ y = data_df['target_class'].values
 # In the presence of outliers, StandardScaler does not guarantee balanced feature scales, due to the influence of the outliers while computing the empirical mean and standard deviation. This leads to the shrinkage in the range of the feature values. 
 # - By using **RobustScaler()**, we can remove the outliers and then use either StandardScaler or MinMaxScaler for preprocessing the dataset. 
 
-# In[282]:
+# In[376]:
 
 
 from sklearn import preprocessing
@@ -602,7 +664,7 @@ robust_df = scaler.fit_transform(x)
 robust_df = pd.DataFrame(robust_df,columns=list(x.columns ))
 
 
-# In[283]:
+# In[377]:
 
 
 scaler = MinMaxScaler()
@@ -622,7 +684,7 @@ x = scaler.fit_transform(robust_df)
 # - Oversampling
 # - Undersampling
 
-# In[284]:
+# In[378]:
 
 
 from collections import Counter
@@ -631,32 +693,42 @@ from imblearn.over_sampling import RandomOverSampler
 
 # ### Oversampling
 
+# ![10-oversampling.jpg](attachment:10-oversampling.jpg)
+
 # #### RandomOverSampler
 
-# In[285]:
+# In[379]:
 
 
 ovs= RandomOverSampler(random_state=42)
 x_res , y_res = ovs.fit_resample(x,y)
+RandomOverSampler=(x_res , y_res)
 
 
-# In[286]:
+# In[380]:
 
 
 print('Original dataset shape {}'.format(Counter(y)))
 print('Resampled dataset shape {}'.format(Counter(y_res)))
 
 
-# In[287]:
+# In[381]:
 
 
 x_train,x_test,y_train,y_test = train_test_split(x_res,y_res, test_size=0.3,random_state = 1234)
 from sklearn.naive_bayes import MultinomialNB
 model = MultinomialNB().fit(x_train,y_train)
+
 y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
+
+train_score=model.score(x_train , y_train)
+#test_score=model.score(x_test , y_test)
+
 print("accuracy score",accuracy_score(y_test, y_pred))
-print("mean squared error :",men)
+print("train score :",train_score)
+#print("test score :",test_score)
+
+print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
 confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
 cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
 fig, ax = plt.subplots(figsize=(6,5))
@@ -667,36 +739,43 @@ plt.show()
 
 # #### SMOTETomek
 
-# In[288]:
+# In[382]:
 
 
 from imblearn.combine import SMOTETomek
 smk = SMOTETomek()
 x_res , y_res = smk.fit_resample(x,y)
+SMOTETomek=(x_res , y_res)
 
 
-# In[289]:
+# In[383]:
 
 
 print('Original dataset shape {}'.format(Counter(y)))
 print('Resampled dataset shape {}'.format(Counter(y_res)))
 
 
-# In[290]:
+# In[384]:
 
 
 x_train,x_test,y_train,y_test = train_test_split(x_res,y_res, test_size=0.3,random_state = 1234)
 from sklearn.naive_bayes import MultinomialNB
 model = MultinomialNB().fit(x_train,y_train)
 y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
+
+train_score=model.score(x_train , y_train)
+#test_score=model.score(x_test , y_test)
+
 print("accuracy score",accuracy_score(y_test, y_pred))
-print("mean squared error :",men)
+print("train_score :",train_score)
+#print("test_score :",test_score)
+
+print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
 confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
 cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
 fig, ax = plt.subplots(figsize=(6,5))
 ax.grid(False)
-cm_display.plot(ax=ax,cmap='hot')
+cm_display.plot(ax=ax,cmap='BuPu')
 plt.show()
 
 
@@ -718,7 +797,9 @@ plt.show()
 
 # ### UnderSampling
 
-# In[291]:
+# ![17-undersampling.jpg](attachment:17-undersampling.jpg)
+
+# In[385]:
 
 
 from imblearn.under_sampling import RandomUnderSampler
@@ -726,72 +807,86 @@ from imblearn.under_sampling import RandomUnderSampler
 
 # #### NearMiss  method
 
-# In[292]:
+# In[386]:
 
 
 # Under sampling with nearmiss
 from imblearn.under_sampling import NearMiss
 nm = NearMiss()
 x_res,y_res = nm.fit_resample(x,y)
+NearMiss=(x_res,y_res)
 
 
-# In[293]:
+# In[387]:
 
 
 print('Original dataset shape {}'.format(Counter(y)))
 print('Resampled dataset shape {}'.format(Counter(y_res)))
 
 
-# In[294]:
+# In[388]:
 
 
 x_train,x_test,y_train,y_test = train_test_split(x_res,y_res, test_size=0.3,random_state = 1234)
 from sklearn.naive_bayes import MultinomialNB
 model = MultinomialNB().fit(x_train,y_train)
 y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
+
+train_score=model.score(x_train , y_train)
+#test_score=model.score(x_test , y_test)
+
 print("accuracy score",accuracy_score(y_test, y_pred))
-print("mean squared error :",men)
+print("train_score :",train_score)
+#print("test_score :",test_score)
+
+print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
 confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
 cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
 fig, ax = plt.subplots(figsize=(6,5))
 ax.grid(False)
-cm_display.plot(ax=ax,cmap='afmhot')
+cm_display.plot(ax=ax,cmap='BuPu')
 plt.show()
 
 
 # #### RandomunderSampler method
 
-# In[295]:
+# In[389]:
 
 
 # Under sampling with randomundersample
 ous = RandomUnderSampler(random_state=42)
 x_res,y_res = ous.fit_resample(x,y)
+RandomunderSampler=(x_res,y_res )
 
 
-# In[296]:
+# In[390]:
 
 
 print('Original dataset shape {}'.format(Counter(y)))
 print('Resampled dataset shape {}'.format(Counter(y_res)))
 
 
-# In[297]:
+# In[391]:
 
 
 x_train,x_test,y_train,y_test = train_test_split(x_res,y_res, test_size=0.3,random_state = 1234)
 from sklearn.naive_bayes import MultinomialNB
 model = MultinomialNB().fit(x_train,y_train)
 y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
+
+train_score=model.score(x_train , y_train)
+#test_score=model.score(x_test , y_test)
+
 print("accuracy score",accuracy_score(y_test, y_pred))
-print("mean squared error :",men)
+print("train_score :",train_score)
+#print("test_score :",test_score)
+
+print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
 confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
 cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
 fig, ax = plt.subplots(figsize=(6,5))
 ax.grid(False)
-cm_display.plot(ax=ax,cmap='YlOrBr')
+cm_display.plot(ax=ax,cmap='BuPu')
 plt.show()
 
 
@@ -816,53 +911,96 @@ plt.show()
 
 # ----
 
-# #### so we will use Undersampling : RandomunderSampler method
+# #### so we will use Oversampling : SMOTETomek method
 
 # ----
 
 # ## Modeling
 
-# In[330]:
+# - LogisticRegression
+# - DecisionTreeClassifier
+# - RandomForestClassifier
+# - KNeighborsClassifier
+# - XGBClassifier
+# - VotingClassifier ( hard , soft)
+# 
+# ### What are the Performance Evaluation Measures for Classification Models?
+# - Confusion Matrix
+# - Precision
+# - Recall/ Sensitivity
+# - Specificity
+# - F1-Score
+# - AUC & ROC Curve
+# ![99666confusion%20matrix.jpeg](attachment:99666confusion%20matrix.jpeg)
+
+# In[392]:
 
 
-compa={"accuracy":[],
-       'mean squared error':[],
-       'model':[]}
+compa={'model':[],
+       'train_score':[],
+       "accuracy":[],
+      'recall':[],
+      'precision':[],
+      'f1_score':[]}
+
+
+# In[393]:
+
+
+def print_report(model,name,color):
+    y_pred = model.predict(x_test)
+
+    train_score=model.score(x_train , y_train)
+    accuracy=accuracy_score(y_test, y_pred)
+    
+
+    recall = recall_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    f1_scor=f1_score(y_test, y_pred)
+    
+    print('recall  = {}'.format(np.round(recall,3)))
+    print('Precision   = {}'.format(np.round(precision,3)))
+    print('f1_score   = {}'.format(np.round(f1_scor,3)))
+
+    compa['f1_score'].append(f1_scor)
+    compa['accuracy'].append(accuracy)
+    compa['train_score'].append(train_score)
+    compa['recall'].append(recall)
+    compa['precision'].append(precision)
+    compa['model'].append(name) 
+    
+    print("accuracy score = {}".format(np.round(accuracy,3)))
+    print("train score = {}".format(np.round(train_score,3)))
+
+    print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
+    confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
+    cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
+    fig, ax = plt.subplots(figsize=(6,5))
+    ax.grid(False)
+    cm_display.plot(ax=ax,cmap=color)
+    plt.show()
 
 
 # ## Logistic Regression
 
 # **Extension of linear regression that’s used for classification tasks, meaning the output variable is binary (e.g., only black or white) rather than continuous (e.g., an infinite list of potential colors)**
 
-# In[331]:
+# In[394]:
 
 
-x_train,x_test,y_train,y_test = train_test_split(x,y, test_size=0.3,random_state = 1234)
+x_res,y_res=SMOTETomek
+x_train,x_test,y_train,y_test = train_test_split(x_res,y_res, test_size=0.3,random_state = 1234)
 
 
-# In[332]:
+# In[395]:
 
 
 lr = LogisticRegression()
 lr.fit(x_train , y_train)
-y_pred = lr.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
-accuracy=accuracy_score(y_test, y_pred)
-compa['accuracy'].append(accuracy)
-compa['mean squared error'].append(men)
-compa['model'].append('LogisticRegression')                      
-print("accuracy score",accuracy)
-print("mean squared error :",men)
-print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
-confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-fig, ax = plt.subplots(figsize=(6,5))
-ax.grid(False)
-cm_display.plot(ax=ax)
-plt.show()
+print_report(model=lr,name="LogisticRegression",color='BuPu')
 
 
-# In[333]:
+# In[396]:
 
 
 parameters = [{'penalty':['l1','l2']}, 
@@ -878,29 +1016,15 @@ best_clf_grid=grid_search.fit(x_train, y_train)
 print(best_clf_grid.best_estimator_)
 
 
-# In[334]:
+# In[397]:
 
 
 lr = LogisticRegression(C=166.8)
 lr.fit(x_train , y_train)
-y_pred = lr.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
-accuracy=accuracy_score(y_test, y_pred)
-compa['accuracy'].append(accuracy)
-compa['mean squared error'].append(men)
-compa['model'].append('LogisticRegression GS')                      
-print("accuracy score",accuracy)
-print("mean squared error :",men)
-print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
-confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-fig, ax = plt.subplots(figsize=(6,5))
-ax.grid(False)
-cm_display.plot(ax=ax,cmap='afmhot')
-plt.show()
+print_report(model=lr,name="LogisticRegression GS",color='afmhot')
 
 
-# In[335]:
+# In[398]:
 
 
 cv_score = cross_val_score(lr, x, y, cv=10, scoring='roc_auc')
@@ -934,35 +1058,21 @@ fig.show()
 # **Decision Tree is a tree-like graph where sorting starts from the root node to the leaf node until the target is achieved. 
 # It is the most popular one for decision and classification based on supervised algorithms. It is constructed by recursive partitioning where each node acts as a test case for some attributes and each edge, deriving from the node, is a possible answer in the test case. Both the root and leaf nodes are two entities of the algorithm.**
 
-# In[304]:
+# In[399]:
 
 
 from sklearn.tree import DecisionTreeClassifier
 
 
-# In[336]:
+# In[400]:
 
 
 model = DecisionTreeClassifier()
 model.fit(x_train, y_train)
-y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
-accuracy=accuracy_score(y_test, y_pred
-compa['accuracy'].append(accuracy)
-compa['mean squared error'].append(men)
-compa['model'].append('DecisionTreeClassifier')                      
-print("accuracy score",accuracy)
-print("mean squared error :",men)
-print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
-confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-fig, ax = plt.subplots(figsize=(6,5))
-ax.grid(False)
-cm_display.plot(ax=ax,cmap='plasma')
-plt.show()
+print_report(model=model,name="DecisionTreeClassifier",color='plasma')
 
 
-# In[337]:
+# In[401]:
 
 
 cv_score = cross_val_score(model, x, y, cv=10, scoring='roc_auc')
@@ -995,29 +1105,15 @@ fig.show()
 
 # **Classification or regression model that improves the accuracy of a simple decision tree by generating multiple decision trees and taking a majority vote of them to predict the output, which is a continuous variable (eg, age) for a regression problem and a discrete variable (eg, either black, white, or red) for classification.The random forest algorithm is simple to use and an effective algorithm. It can predict with high accuracy, and that’s why it is very popular.Random Forest is a classifier that contains a number of decision trees on various subsets of the given dataset and takes the average to improve the predictive accuracy of that dataset.**
 
-# In[338]:
+# In[402]:
 
 
 model = RandomForestClassifier()
 model.fit(x_train, y_train)
-y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
-accuracy=accuracy_score(y_test, y_pred)
-compa['accuracy'].append(accuracy)
-compa['mean squared error'].append(men)
-compa['model'].append('RandomForestClassifier')                      
-print("accuracy score",accuracy)
-print("mean squared error :",men)
-print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
-confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-fig, ax = plt.subplots(figsize=(6,5))
-ax.grid(False)
-cm_display.plot(ax=ax,cmap='YlOrBr')
-plt.show()
+print_report(model=model,name="RandomForestClassifier",color='YlOrBr')
 
 
-# In[339]:
+# In[403]:
 
 
 cv_score = cross_val_score(model, x, y, cv=10, scoring='roc_auc')
@@ -1046,34 +1142,35 @@ fig.update_xaxes(constrain='domain')
 fig.show()
 
 
+# In[404]:
+
+
+import pylab as pl
+importances = model.feature_importances_
+feature_names = df.columns.values[0:-1]
+indices = np.argsort(importances)
+pl.figure(1)
+pl.title('Feature Importances')
+pl.barh(range(len(indices)), importances[indices], color='b', align='center')
+pl.yticks(range(len(indices)), feature_names[indices])
+pl.xlabel('Relative Importance')
+pl.show()
+
+
 # ## KNN
 
 # **K Nearest Neighbours is a basic algorithm that stores all the available and predicts the classification of unlabelled data based on a similarity measure. In linear geometry when two parameters are plotted on the 2D Cartesian system, we identify the similarity measure by calculating the distance between the points. The same applies here, KNN algorithm works on the assumption that similar things exist in close proximity, simply we can put into the same things stay close to each other.**
 
-# In[340]:
+# In[405]:
 
 
 from sklearn.neighbors import KNeighborsClassifier
 classifier = KNeighborsClassifier(n_neighbors=3)
 classifier.fit(x_train, y_train)
-y_pred = classifier.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
-accuracy=accuracy_score(y_test, y_pred)
-compa['accuracy'].append(accuracy)
-compa['mean squared error'].append(men)
-compa['model'].append('KNeighborsClassifier')                      
-print("accuracy score",accuracy)
-print("mean squared error :",men)
-print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
-confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-fig, ax = plt.subplots(figsize=(6,5))
-ax.grid(False)
-cm_display.plot(ax=ax,cmap='hot')
-plt.show()
+print_report(model=classifier,name="KNeighborsClassifier",color='hot')
 
 
-# In[341]:
+# In[406]:
 
 
 cv_score = cross_val_score(classifier, x, y, cv=10, scoring='roc_auc')
@@ -1106,29 +1203,15 @@ fig.show()
 
 # **The XGBoost is having a tree learning algorithm as well as linear model learning, and because of that, it is able to do parallel computation on a single machine. This makes it 10 times faster than any of the existing gradient boosting algorithms. it has become the "state-of-the-art” machine learning algorithm to deal with structured data.**
 
-# In[342]:
+# In[407]:
 
 
 model = XGBClassifier(nthread=-1)
 model.fit(x_train, y_train)
-y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
-accuracy=accuracy_score(y_test, y_pred)
-compa['accuracy'].append(accuracy)
-compa['mean squared error'].append(men)
-compa['model'].append('XGBClassifier')                      
-print("accuracy score",accuracy)
-print("mean squared error :",men)
-print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
-confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-fig, ax = plt.subplots(figsize=(6,5))
-ax.grid(False)
-cm_display.plot(ax=ax,cmap='Greys')
-plt.show()
+print_report(model=model,name="XGBClassifier",color='Greys')
 
 
-# In[343]:
+# In[408]:
 
 
 cv_score = cross_val_score(model, x, y, cv=10, scoring='roc_auc')
@@ -1167,11 +1250,10 @@ fig.show()
 
 # ### Hard Voting
 
-# In[344]:
+# In[409]:
 
 
-from sklearn.ensemble import  AdaBoostClassifier, VotingClassifier
-from xgboost import XGBClassifier
+
 
 estimators = [('lr',LogisticRegression()),
               ('dt',DecisionTreeClassifier()),
@@ -1180,28 +1262,14 @@ estimators = [('lr',LogisticRegression()),
               ('xg',XGBClassifier())]
 model = VotingClassifier(estimators=estimators,voting='hard')
 model.fit(x_train, y_train)
-y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
-accuracy=accuracy_score(y_test, y_pred)
-compa['accuracy'].append(accuracy)
-compa['mean squared error'].append(men)
-compa['model'].append('HardVotingClassifier')                      
-print("accuracy score",accuracy)
-print("mean squared error :",men)
-print(classification_report(y_test, y_pred,target_names=['Non Pulsar','Pulsar']))
-confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-fig, ax = plt.subplots(figsize=(6,5))
-ax.grid(False)
-cm_display.plot(ax=ax,cmap='BuPu')
-plt.show()
+print_report(model=model,name="hardVotingClassifier",color='BuPu')
 
 
 # ### predict_proba is not available when voting='hard'
 
 # ### Soft Voting
 
-# In[345]:
+# In[410]:
 
 
 estimators = [('lr',LogisticRegression()),
@@ -1211,24 +1279,10 @@ estimators = [('lr',LogisticRegression()),
               ('xg',XGBClassifier())]
 model = VotingClassifier(estimators=estimators,voting='soft')
 model.fit(x_train, y_train)
-y_pred = model.predict(x_test)
-men=mean_squared_error(y_test,y_pred)
-accuracy=accuracy_score(y_test, y_pred)
-compa['accuracy'].append(accuracy)
-compa['mean squared error'].append(men)
-compa['model'].append('SoftVotingClassifier')                      
-print("accuracy score",accuracy)
-print("mean squared error :",men)
-print(classification_report(y_test, y_pred ,target_names=['Non Pulsar','Pulsar']))
-confusion_matrix=metrics.confusion_matrix(y_pred,y_test)
-cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-fig, ax = plt.subplots(figsize=(6,5))
-ax.grid(False)
-cm_display.plot(ax=ax,cmap='cividis')
-plt.show()
+print_report(model=model,name="softVotingClassifier",color='cividis')
 
 
-# In[346]:
+# In[411]:
 
 
 cv_score = cross_val_score(model, x, y, cv=10, scoring='roc_auc')
@@ -1259,14 +1313,30 @@ fig.show()
 
 # ## compersion between models
 
-# In[350]:
+# In[412]:
 
 
-pd.DataFrame(compa,columns=['model','accuracy','mean squared error'])
+compa=pd.DataFrame(compa)
+compa.sort_values(['precision','accuracy','recall'],inplace=True)
+compa
 
 
-# In[ ]:
+# In[413]:
 
 
+# Create traces
+import plotly.graph_objects as go
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=compa["model"], y=compa["accuracy"],
+                    mode='lines+markers',
+                    name='accuracy'))
+fig.add_trace(go.Scatter(x=compa["model"], y=compa["recall"],
+                    mode='lines+markers',
+                    name='recall'))
+fig.add_trace(go.Scatter(x=compa["model"], y=compa["precision"],
+                    mode='lines+markers', name='precision'))
+fig.add_trace(go.Scatter(x=compa["model"], y=compa["f1_score"],
+                    mode='lines+markers', name='f1_score'))
 
+fig.show()
 
