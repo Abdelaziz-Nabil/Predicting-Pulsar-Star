@@ -1,3 +1,7 @@
+Predicting-Pulsar-Star
+
+![California Housing Prices Data Modeling](https://user-images.githubusercontent.com/71048405/196055692-3f523e51-d34c-4948-a8b0-9e04aa25da10.png)
+
 ## About Dataset 
 #### [Problem Statement:](https://www.kaggle.com/datasets/colearninglounge/predicting-pulsar-starintermediate)
 > **Pulsars are a rare type of Neutron star that produce radio emission detectable here on Earth. They are of considerable scientific interest as probes of space-time, the inter-stellar medium, and states of matter. Machine learning tools are now being used to automatically label pulsar candidates to facilitate rapid analysis. Classification systems in particular are being widely adopted,which treat the candidate data sets as binary classification problems.**
